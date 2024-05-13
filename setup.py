@@ -129,42 +129,23 @@ if not SKIP_CUDA_BUILD:
     if FORCE_CXX11_ABI:
         torch._C._GLIBCXX_USE_CXX11_ABI = True
 
-    if _is_hip():
-        nvcc_flags = append_nvcc_threads(
-                    [
-                        "-O3",
-                        "-U__CUDA_NO_HALF_OPERATORS__",
-                        "-U__CUDA_NO_HALF_CONVERSIONS__",
-                        "-U__CUDA_NO_BFLOAT16_OPERATORS__",
-                        "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
-                        "-U__CUDA_NO_BFLOAT162_OPERATORS__",
-                        "-U__CUDA_NO_BFLOAT162_CONVERSIONS__",
-                        # "--expt-relaxed-constexpr",
-                        # "--expt-extended-lambda",
-                        "--use_fast_math",
-                        "--ptxas-options=-v",
-                        # "-lineinfo",
-                    ]
-                    + cc_flag
-                )
-    else:
-        nvcc_flags = append_nvcc_threads(
-                    [
-                        "-O3",
-                        "-U__CUDA_NO_HALF_OPERATORS__",
-                        "-U__CUDA_NO_HALF_CONVERSIONS__",
-                        "-U__CUDA_NO_BFLOAT16_OPERATORS__",
-                        "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
-                        "-U__CUDA_NO_BFLOAT162_OPERATORS__",
-                        "-U__CUDA_NO_BFLOAT162_CONVERSIONS__",
-                        "--expt-relaxed-constexpr",
-                        "--expt-extended-lambda",
-                        "--use_fast_math",
-                        "--ptxas-options=-v",
-                        "-lineinfo",
-                    ]
-                    + cc_flag
-                )
+    nvcc_flags = [
+        "-O3",
+        "-U__CUDA_NO_HALF_OPERATORS__",
+        "-U__CUDA_NO_HALF_CONVERSIONS__",
+        "-U__CUDA_NO_BFLOAT16_OPERATORS__",
+        "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
+        "-U__CUDA_NO_BFLOAT162_OPERATORS__",
+        "-U__CUDA_NO_BFLOAT162_CONVERSIONS__",
+    ]
+    if not _is_hip():
+        nvcc_flags += [
+            "--expt-relaxed-constexpr",
+            "--expt-extended-lambda",
+            "--use_fast_math",
+            "--ptxas-options=-v",
+            "-lineinfo",
+        ]
 
     ext_modules.append(
         CUDAExtension(
@@ -177,7 +158,10 @@ if not SKIP_CUDA_BUILD:
             ],
             extra_compile_args={
                 "cxx": ["-O3"],
-                "nvcc": nvcc_flags,
+                "nvcc": append_nvcc_threads(
+                    nvcc_flags
+                    + cc_flag
+                ),
             },
             include_dirs=[Path(this_dir) / "csrc" / "causal_conv1d"],
         )
