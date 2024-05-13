@@ -179,6 +179,7 @@ def get_wheel_url():
     # We're using the CUDA version used to build torch, not the one currently installed
     # _, cuda_version_raw = get_cuda_bare_metal_version(CUDA_HOME)
     torch_version_raw = parse(torch.__version__)
+    torch_version = f"{torch_version_raw.major}.{torch_version_raw.minor}"
     python_version = f"cp{sys.version_info.major}{sys.version_info.minor}"
     platform_name = get_platform()
     causal_conv1d_version = get_package_version()
@@ -194,7 +195,6 @@ def get_wheel_url():
         torch_cuda_version = parse("11.8") if torch_cuda_version.major == 11 else parse("12.2")
         # cuda_version = f"{cuda_version_raw.major}{cuda_version_raw.minor}"
         cuda_version = f"{torch_cuda_version.major}{torch_cuda_version.minor}"
-        torch_version = f"{torch_version_raw.major}.{torch_version_raw.minor}"
         # Determine wheel URL based on CUDA version, torch version, python version and OS
         wheel_filename = f"{PACKAGE_NAME}-{causal_conv1d_version}+cu{cuda_version}torch{torch_version}cxx11abi{cxx11_abi}-{python_version}-{python_version}-{platform_name}.whl"
     wheel_url = BASE_WHEEL_URL.format(
