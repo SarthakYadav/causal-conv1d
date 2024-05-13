@@ -1,15 +1,19 @@
 /******************************************************************************
  * Copyright (c) 2024, Tri Dao.
  ******************************************************************************/
+#pragma once
 
 #include <c10/util/BFloat16.h>
 #include <c10/util/Half.h>
 #include <c10/cuda/CUDAException.h>  // For C10_CUDA_CHECK and C10_CUDA_KERNEL_LAUNCH_CHECK
-
+#ifndef USE_ROCM
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_store.cuh>
 #include <cub/block/block_reduce.cuh>
-
+#else
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "causal_conv1d.h"
 #include "causal_conv1d_common.h"
 #include "static_switch.h"
@@ -35,12 +39,20 @@ struct Causal_conv1d_bwd_kernel_traits {
     using BlockStoreT = cub::BlockStore<input_t, kNThreads, kNElts, cub::BLOCK_STORE_WARP_TRANSPOSE>;
     using BlockStoreVecT = cub::BlockStore<vec_t, kNThreads, 1, cub::BLOCK_STORE_DIRECT>;
     using BlockReduceFloatT = cub::BlockReduce<float, kNThreads>;
-    static constexpr int kSmemIOSize = kIsVecLoad
-        ? 0
-        : std::max({sizeof(typename BlockLoadT::TempStorage), sizeof(typename BlockStoreT::TempStorage)});
     static constexpr int kSmemExchangeSize = kNThreads * kNBytes * kNElts * (!kSiluAct ? 1 : kNExchangeRounds + 1);
-    static constexpr int kSmemSize = std::max({kSmemExchangeSize,
-            int(sizeof(typename BlockReduceFloatT::TempStorage))}) + (kIsVecLoad ? 0 : kSmemIOSize);
+    #ifndef USE_ROCM
+        static constexpr int kSmemIOSize = kIsVecLoad
+            ? 0
+            : std::max({sizeof(typename BlockLoadT::TempStorage), sizeof(typename BlockStoreT::TempStorage)});
+        static constexpr int kSmemSize = std::max({kSmemExchangeSize,
+            int(sizeof(typename BlockReduceFloatT::TempStorage))}) + (kIsVecLoad ? 0 : kSmemIOSize);    
+    #else
+        static constexpr int kSmemIOSize = kIsVecLoad
+            ? 0
+            : rocm_utils::max(sizeof(typename BlockLoadT::TempStorage), sizeof(typename BlockStoreT::TempStorage));
+        static constexpr int kSmemSize = rocm_utils::max(kSmemExchangeSize,
+            int(sizeof(typename BlockReduceFloatT::TempStorage))) + (kIsVecLoad ? 0 : kSmemIOSize);
+    #endif
 };
 
 template<typename Ktraits>

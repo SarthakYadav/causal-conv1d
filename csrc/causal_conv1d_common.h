@@ -4,8 +4,31 @@
 
 #pragma once
 
+#ifndef USE_ROCM
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
+#else
+#include <hip/hip_bf16.h>
+#include <hip/hip_fp16.h>
+#endif
+
+#ifdef USE_ROCM
+namespace rocm_utils {
+
+template <typename T>
+__host__ __device__ constexpr T min(T x, T y) 
+{
+    return x < y ? x : y;
+}
+
+template <typename T>
+__host__ __device__ constexpr T max(T x, T y)
+{
+    return x > y ? x : y;
+}
+
+} // namespace rocm_utils
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
