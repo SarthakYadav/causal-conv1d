@@ -405,8 +405,11 @@ void causal_conv1d_channellast_bwd_kernel(ConvParamsBwd params) {
     }
 
     __syncthreads();
-
-    constexpr int kLPerThread = std::min(kChunkSizeL * kChunkSizeC / kNThreads, kChunkSizeL);
+    #ifndef USE_ROCM
+        constexpr int kLPerThread = std::min(kChunkSizeL * kChunkSizeC / kNThreads, kChunkSizeL);
+    #else
+        constexpr int kLPerThread = rocm_utils::min(kChunkSizeL * kChunkSizeC / kNThreads, kChunkSizeL);
+    #endif
     static_assert(kLPerThread * kNThreads == kChunkSizeL * kChunkSizeC);
     constexpr int kNThreadsPerRow = kChunkSizeL / kLPerThread;
     static_assert(kNThreadsPerRow * kLPerThread == kChunkSizeL);
