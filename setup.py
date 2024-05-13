@@ -129,18 +129,26 @@ if not SKIP_CUDA_BUILD:
     if FORCE_CXX11_ABI:
         torch._C._GLIBCXX_USE_CXX11_ABI = True
 
-    ext_modules.append(
-        CUDAExtension(
-            name="causal_conv1d_cuda",
-            sources=[
-                "csrc/causal_conv1d.cpp",
-                "csrc/causal_conv1d_fwd.cu",
-                "csrc/causal_conv1d_bwd.cu",
-                "csrc/causal_conv1d_update.cu",
-            ],
-            extra_compile_args={
-                "cxx": ["-O3"],
-                "nvcc": append_nvcc_threads(
+    if _is_hip():
+        nvcc_flags = append_nvcc_threads(
+                    [
+                        "-O3",
+                        "-U__CUDA_NO_HALF_OPERATORS__",
+                        "-U__CUDA_NO_HALF_CONVERSIONS__",
+                        "-U__CUDA_NO_BFLOAT16_OPERATORS__",
+                        "-U__CUDA_NO_BFLOAT16_CONVERSIONS__",
+                        "-U__CUDA_NO_BFLOAT162_OPERATORS__",
+                        "-U__CUDA_NO_BFLOAT162_CONVERSIONS__",
+                        # "--expt-relaxed-constexpr",
+                        # "--expt-extended-lambda",
+                        "--use_fast_math",
+                        "--ptxas-options=-v",
+                        # "-lineinfo",
+                    ]
+                    + cc_flag
+                )
+    else:
+        nvcc_flags = append_nvcc_threads(
                     [
                         "-O3",
                         "-U__CUDA_NO_HALF_OPERATORS__",
@@ -156,7 +164,20 @@ if not SKIP_CUDA_BUILD:
                         "-lineinfo",
                     ]
                     + cc_flag
-                ),
+                )
+
+    ext_modules.append(
+        CUDAExtension(
+            name="causal_conv1d_cuda",
+            sources=[
+                "csrc/causal_conv1d.cpp",
+                "csrc/causal_conv1d_fwd.cu",
+                "csrc/causal_conv1d_bwd.cu",
+                "csrc/causal_conv1d_update.cu",
+            ],
+            extra_compile_args={
+                "cxx": ["-O3"],
+                "nvcc": nvcc_flags,
             },
             include_dirs=[Path(this_dir) / "csrc" / "causal_conv1d"],
         )
